@@ -2221,7 +2221,6 @@ namespace ConsoleGame
         Calculate cal;
 
         ScreenManager scManager;
-        RendererManager rendererManager;
 
         //描画するポリゴンの参照
         List<Polygon> drawingPolygons;
@@ -2241,7 +2240,6 @@ namespace ConsoleGame
         //ポリゴンのidと配列上でのインデックスを紐づけるリスト
         //ポリゴンのid
         List<Polygon> polygons = new List<Polygon>();
-        List<TriangleRenderingData> triangleDatas = new List<TriangleRenderingData>();
 
         Dictionary<int, List<int>> polygonId_polAndTrisIndexList = new Dictionary<int, List<int>>(); //allPolygons はこの辞書の追加順に並んでいるので、これで検索を行い、そのインデックス番号を取得する。
 
@@ -2260,9 +2258,6 @@ namespace ConsoleGame
         private float[] secondV_buffer;
         private float[] thirdV_buffer;
 
-        List<TriangleRenderingData> triDataBuffer = new List<TriangleRenderingData>();
-
-        private bool whichRotate_ray_world = false; //trueならRayが回転する
 
 
         private Dictionary<int, int> id_boxIndexes = new Dictionary<int, int>();
@@ -2270,10 +2265,8 @@ namespace ConsoleGame
 
         //描画図形を集計して、レンダラーにscManagerの参照と一緒に渡す簡単なお仕事
         //3Dの場合
-        public ThreeDirectionalCamera(bool _whichRotate_ray_world, char _empty_letter, ScreenManager _scMn, RendererManager _rendererManager, Calculate _cal)
+        public ThreeDirectionalCamera(char _empty_letter, ScreenManager _scMn, Calculate _cal)
         {
-            whichRotate_ray_world = _whichRotate_ray_world;
-            rendererManager = _rendererManager;
             scManager = _scMn;
             drawingPolygons = new List<Polygon>();
             empty_letter = _empty_letter;
@@ -2458,174 +2451,6 @@ namespace ConsoleGame
             {
                 return false;
             }
-        }
-    }
-    public class TriangleRenderingData
-    {
-        private float[] firstVertex_worldPosition;
-
-        private float a_vector_length;
-        private float b_vector_length;
-
-        private float[] a_vector;
-        private float[] b_vector;
-
-        private Texture texture; //あらかじめテクスチャを取得することで高速化を図る試み
-        private int mode;
-
-        public TriangleRenderingData(Texture texture, int mode)
-        {
-            a_vector = new float[3];
-            b_vector = new float[3];
-            firstVertex_worldPosition = new float[3];
-            this.texture = texture;
-            this.mode = mode;
-        }
-
-        public void SetNeededDatas(float[] a, float[] b, float[] fv)
-        {
-            a_vector[0] = a[0];
-            a_vector[1] = a[1];
-            a_vector[2] = a[2];
-
-            b_vector[0] = b[0];
-            b_vector[1] = b[1];
-            b_vector[2] = b[2];
-
-            firstVertex_worldPosition[0] = fv[0];
-            firstVertex_worldPosition[1] = fv[1];
-            firstVertex_worldPosition[2] = fv[2];
-        }
-        public float GetA_Vector_Length()
-        {
-            return a_vector_length;
-        }
-        public float GetB_Vector_Length()
-        {
-            return b_vector_length;
-        }
-        public float[] GetA_Vector()
-        {
-            return a_vector;
-        }
-        public float[] GetB_Vector()
-        {
-            return b_vector;
-        }
-        public float[] GetFirstVertexPosition()
-        {
-            return firstVertex_worldPosition;
-        }
-        public Texture GetTexture()
-        {
-            return texture;
-        }
-        public int GetMode()
-        {
-            return mode;
-        }
-        public void ReCalcNeededProperties(Calculate cal)
-        {
-            a_vector_length = (float)Math.Sqrt(Math.Pow(a_vector[0], 2) + Math.Pow(a_vector[1], 2) + Math.Pow(a_vector[2], 2));
-            b_vector_length = (float)Math.Sqrt(Math.Pow(b_vector[0], 2) + Math.Pow(b_vector[1], 2) + Math.Pow(b_vector[2], 2));
-        }
-    }
-    public class CameraManager
-    {
-
-        private int idGenerater = 0;
-        Dictionary<int, ThreeDirectionalCamera> cameraId_cameraRef = new Dictionary<int, ThreeDirectionalCamera>();
-        public void InformToCamera_reCalcNeeded(int cameraId, int polygonId)
-        {
-            cameraId_cameraRef[cameraId].AddRecalcNeededPolygonId(polygonId);
-        }
-        public int AddCamera(ThreeDirectionalCamera cam)
-        {
-            cameraId_cameraRef.Add(idGenerater, cam);
-            cam.SetId(idGenerater);
-            idGenerater += 1;
-            return idGenerater - 1;
-        }
-        public void DeleteCamera(int id)
-        {
-            cameraId_cameraRef.Remove(id);
-        }
-
-        public void InformPolygonToCamera(Polygon pol, int cameraId)
-        {
-            cameraId_cameraRef[cameraId].AddNewPolygon(pol);
-        }
-        public void InformNewTriangleInPolygonToCamera(int cameraId, int polygonId, Triangle tri)
-        {
-            cameraId_cameraRef[cameraId].AddNewTriangle(polygonId, tri);
-        }
-        public void MisInformPolygonFromCamera(int cameraId, int polygonId)
-        {
-            cameraId_cameraRef[cameraId].RemovePolygon(polygonId);
-        }
-        public void DeleteTriangleDataFromCamera(int cameraId, int polygonId, int triangleId)
-        {
-            cameraId_cameraRef[cameraId].RemoveTriangle(polygonId, triangleId);
-        }
-        public Dictionary<int, ThreeDirectionalCamera> ShowAllCameraIdAndRef()
-        {
-            return cameraId_cameraRef;
-        }
-        public bool HasThisCamera(int cameraId)
-        {
-            if (cameraId_cameraRef.ContainsKey(cameraId))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-        public ThreeDirectionalCamera GetCameraById(int cameraId)
-        {
-            return cameraId_cameraRef[cameraId];
-        }
-    }
-    public class RendererManager
-    {
-        //カメラが複数のスクリーンにレンダリングを要請できるようにするためのクラス
-        ScreenManager screenManager;
-        Dictionary<int, ThreeDirectionalRenderer> screenId_renderer = new Dictionary<int, ThreeDirectionalRenderer>();
-        //一つのスクリーンに対して一つのレンダラーを置く。
-        public RendererManager(ScreenManager scrMn)
-        {
-            screenManager = scrMn;
-        }
-        //スクリーンに対するレンダラーを用意する
-        public void AddRendererForScreen(bool _whichRotate_ray_world, int screenId, float depth, float width, float uniformedRayLength, double smallNum, Calculate cal)
-        {
-            ThreeDirectionalRenderer renderer = new ThreeDirectionalRenderer(_whichRotate_ray_world, screenManager.GetAreaInfo(screenId)[0], screenManager.GetAreaInfo(screenId)[1], depth, width, uniformedRayLength, smallNum, cal);
-            screenId_renderer.Add(screenId, renderer);
-        }
-        //辞書に含まれる任意のスクリーンに3Dレンダリングする
-        public void RenderToScreen(List<TriangleRenderingData> triDatas, int screenId, char empty_letter, int cameraId)
-        {
-            screenId_renderer[screenId].Render(triDatas, screenManager, screenId, empty_letter, cameraId);
-        }
-        public void RenderToScreen(List<BoundingBox> boxes, int screenId, float[] cameraPos, float[] cameraRotation, char empty_letter, int cameraId)
-        {
-            screenId_renderer[screenId].Render(boxes, screenManager, screenId, cameraPos, cameraRotation, empty_letter, cameraId);
-        }
-        public bool HasThisScreen(int screenId)
-        {
-            if (screenId_renderer.ContainsKey(screenId))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-        public ThreeDirectionalRenderer GetRendererForThisScreen(int screenId)
-        {
-            return screenId_renderer[screenId];
         }
     }
 
@@ -2813,37 +2638,6 @@ namespace ConsoleGame
             recordLen = 0;
             Task.Run(() => ReadMouseAndKeyLoop(ref keyChar, ref key_readed, ref vKeyCode, ref controllState, ref mouse_clicked, ref mouse_button, handle, record, recordLen));
         }
-        /*
-        public Input(bool fromMouse, bool fromKeyboard)
-        {
-            if (fromMouse == true)
-            {
-                mousePoint = new MOUSEPOINT();
-                getInputFromInfo[0] = true;
-            }
-            if (fromKeyboard == true)
-            {
-                keyInfo = new ConsoleKeyInfo();
-                getInputFromInfo[1] = true;
-                Task.Run(() => ReadKeyLoop(ref keyInfo, ref key_readed));
-            }
-            //正直何やってるかよくわからない
-            handle = NativeMethods.GetStdHandle(NativeMethods.STD_INPUT_HANDLE);
-
-            mode = 0;
-            if (!(NativeMethods.GetConsoleMode(handle, ref mode))) { throw new Win32Exception(); }
-
-            mode |= NativeMethods.ENABLE_MOUSE_INPUT;
-            mode &= ~NativeMethods.ENABLE_QUICK_EDIT_MODE;
-            mode |= NativeMethods.ENABLE_EXTENDED_FLAGS;
-
-            if (!(NativeMethods.SetConsoleMode(handle, mode))) { throw new Win32Exception(); }
-
-            record = new NativeMethods.INPUT_RECORD();
-            recordLen = 0;
-            Task.Run(() => ReadMouseLoop(ref mouse_clicked, ref mouse_button, handle, record, recordLen));
-        }
-        */
         /// <summary>
         /// 入力受け取りの有効化
         /// </summary>
@@ -3135,8 +2929,6 @@ namespace ConsoleGame
     /// </summary>
     public class ThreeDirectionalRenderer
     {
-        //いったんはマイクラのためのアルゴリズムだけ実装する
-        //本来あったZbuffer法によるレンダリングは重すぎるので断念
 
         private float[] virtualScreen_f_vector_origin = new float[3]; 
         private float[] virtualScreen_s_vector_origin = new float[3];
@@ -3153,32 +2945,12 @@ namespace ConsoleGame
 
         private char nullChar;
 
-        //bufferを使って関数の呼び出しを軽くする
-
-        //描画スクリーンは2D
-        //横の解像度を指定でき、縦はそれに合わせる
-        //Rayの集合が回転するか、ポリゴンが回転するかを選べる
-        /// <summary>
-        /// !!!!!ユーザーによるアクセスを想定していない関数です!!!!!
-        /// </summary>
-        /// <param name="_rayArr_width"></param>
-        /// <param name="_depth"></param>
-        /// <param name="_width"></param>
-        /// <param name="_height"></param>
+        
         public ThreeDirectionalRenderer(int _rayArr_width, float _depth, float _width, float _height, char _nullChar, Calculate _cal)
         {
             cal = _cal;
             nullChar = _nullChar;
         }
-        //PolygonのリストからActiveかつRenderableなものを描画
-        /// <summary>
-        /// !!!!!ユーザーによるアクセスを想定していない関数です!!!!!
-        /// </summary>
-        /// <param name="cam"></param>
-        /// <param name="scmn"></param>
-        /// <param name="screenId"></param>
-        /// <param name="empty_letter"></param>
-        /// <param name="cameraId"></param>
         public void Render(List<Triangle> tris, ScreenManager scmn, int screenId, char empty_letter, int cameraId, float[] cameraPosition, float[] cameraRotation, float depth, float width, float height)
         {
             virtualScreen_f_vector_origin = [-1 * width * 0.5f, height * 0.5f, depth];
@@ -3199,10 +2971,12 @@ namespace ConsoleGame
             //・ソート
             //は済んでいる想定なので
 
+            float DetNum = 0;
             float[] D = new float[3];
             float[] R = new float[3];
             float[] a = new float[3];
             float[] b = new float[3];
+            float[] A = new float[2];
 
             float detA = 0;
             float detA_u = 0;
@@ -3238,10 +3012,6 @@ namespace ConsoleGame
                     float maxU = -1;
                     float minV = 2;
                     float maxV = -1;
-
-                    float u_buf = 0;
-                    float v_buf = 0;
-                    float t_buf = 0; //tが負ならスクリーンに描画されない
 
                     float[][] tri_uv = new float[3][];
 
@@ -3321,40 +3091,23 @@ namespace ConsoleGame
                         //描画する
                         XCount = (int)Math.Floor((float)Math.Abs(maxU - minU) / scrXInterval) + 10;
                         YCount = (int)Math.Floor((float)Math.Abs(maxV - minV) / scrYInterval) + 10;
-                        anchorIntX = (int)Math.Floor((float)
-                    }
-                }
-            }
-
-            
-            float uOut = 0;
-            float vOut = 0;
-            float tOut = 0;
-            float t_buffer = 100;
-            char letter = empty_letter; //番兵的な
-
-            for (int i = 0; i < w_h[1] - 1; i++)
-            {
-                //tdsの一点を指定
-                for (int j = 0; j < w_h[0] - 1; j++)
-                {
-                    letter = empty_letter;
-                    t_buffer = GetUniformedrayLength();
-
-                    for (int k = 0; k < triDatas.Count; k++)
-                    {
-                        if (IsCrossed_uniformedRayAndTriangle(triDatas[k], [j, i], [0, 0, 0], ref tOut, ref uOut, ref vOut))
+                        anchorIntX = (int)Math.Floor(minU / scrXInterval);
+                        anchorIntY = (int)Math.Floor(minV / scrYInterval);
+                        cal.SubVector_Vector2_writeToRef(tri_uv[1], tri_uv[0], ref a);
+                        cal.SubVector_Vector2_writeToRef(tri_uv[2], tri_uv[0], ref b);
+                        DetNum = cal.Det_2(a[0], b[0], a[1], b[1]);
+                        if (DetNum != 0)
                         {
-                            //0以上で最小の交点を算出
-                            if (tOut >= 0 && t_buffer > tOut)
+                            for (int j = -10; j < YCount; j++)
                             {
-                                t_buffer = tOut;
-                                //テクスチャを参照する
-                                letter = triDatas[k].GetTexture().GetLetterByXY(triDatas[k].GetMode(), uOut, vOut, empty_letter);
+                                for (int k = -10; k < XCount; k++)
+                                {
+                                    A = [k * scrXInterval - (tri_uv[0][0] - minU), j * scrYInterval - (tri_uv[0][1] - minV)];
+                                    scmn.WritePoint_safe(screenId, [anchorIntX + k, anchorIntY + j], tris[i].GetTexture().GetLetterByXY(tris[i].GetMode(), cal.Det_2(A[0], b[0], A[1], b[1]) / DetNum, cal.Det_2(a[0], A[0], a[1], A[1]) / DetNum, empty_letter));
+                                }
                             }
                         }
                     }
-                    scmn.WritePoint_upSetY([j, i], screenId, letter);
                 }
             }
             
@@ -3395,162 +3148,6 @@ namespace ConsoleGame
                 return false;
             }
         }
-        private bool IsCrossed_uniformedRayAndTriangle(TriangleRenderingData triData, int[] point, float[] origin, ref float tOut, ref float uOut, ref float vOut)
-        {
-
-            float[] D = new float[3];
-            float[] R = new float[3];
-            float[] a = new float[3];
-            float[] b = new float[3];
-
-            float detA = 0;
-            float detA_u = 0;
-            float detA_v = 0;
-            float detA_t = 0;
-
-            float u = 0;
-            float v = 0;
-            float t = 0;
-            //ここにきた時点で座標は計算済みの想定なので、
-            a = triData.GetA_Vector();
-            b = triData.GetB_Vector();
-            R = MultipleScalar_Vector3(GetUniformedRayOnPoint(point), -1);
-            D = SubVector_Vector3(origin, triData.GetFirstVertexPosition());
-            detA = Det(a[0], b[0], R[0], a[1], b[1], R[1], a[2], b[2], R[2]);
-            if (detA != 0)
-            {
-                detA_u = Det(D[0], b[0], R[0], D[1], b[1], R[1], D[2], b[2], R[2]);
-                detA_v = Det(a[0], D[0], R[0], a[1], D[1], R[1], a[2], D[2], R[2]);
-                detA_t = Det(a[0], b[0], D[0], a[1], b[1], D[1], a[2], b[2], D[2]);
-                //ここでテクスチャ描画に必要なu,vの値が設定される
-                u = detA_u / detA;
-                uOut = detA_u / detA;
-                v = detA_v / detA;
-                vOut = detA_v / detA;
-                t = detA_t / detA;
-                tOut = detA_t / detA;
-                if (0 <= uOut && uOut <= 1 && 0 <= vOut && vOut <= 1 && 0 <= uOut + vOut && uOut + vOut <= 1)
-                {
-                    isCrossing = true;
-                    multipler = tOut;
-                    return true;
-                }
-                else
-                {
-                    float outLength_buffer_a = triData.GetA_Vector_Length() * uOut;
-                    float outLength_buffer_b = triData.GetB_Vector_Length() * vOut;
-                    //多少の誤差があるので、微小であれば交差しているとみなす
-                    if (((AllowVerySmall(outLength_buffer_a) || AllowVerySmall(1 - outLength_buffer_a)) && (AllowVerySmall(outLength_buffer_b))))
-                    {
-                        isCrossing = true;
-                        multipler = tOut;
-                        return true;
-                    }
-
-                    isCrossing = false;
-                    return false;
-                }
-            }
-            else
-            {
-                isCrossing = false;
-                return false;
-            }
-        }
-        private bool IsCrossed_Ray_Triangle(float[] basePointOfRay, float[] rayVector, float[] fPosVector, float[] sPosVector, float[] tPosVector, ref float tOut, ref float uOut, ref float vOut)
-        {
-            float[] D = new float[3];
-            float[] R = new float[3];
-            float[] a = new float[3];
-            float[] b = new float[3];
-
-            float detA = 0;
-
-            float u = 0;
-            float v = 0;
-            float t = 0;
-            //ここにきた時点で座標は計算済みの想定なので、
-            a = SubVector_Vector3(sPosVector, fPosVector);
-            b = SubVector_Vector3(tPosVector, fPosVector);
-            R = MultipleScalar_Vector3(rayVector, -1);
-            D = SubVector_Vector3(basePointOfRay, fPosVector);
-            detA = Det(a[0], b[0], R[0], a[1], b[1], R[1], a[2], b[2], R[2]);
-            if (detA != 0)
-            {
-                //ここでテクスチャ描画に必要なu,vの値が設定される
-                u = Det(D[0], b[0], R[0], D[1], b[1], R[1], D[2], b[2], R[2]) / detA;
-                v = Det(a[0], D[0], R[0], a[1], D[1], R[1], a[2], D[2], R[2]) / detA;
-                t = Det(a[0], b[0], D[0], a[1], b[1], D[1], a[2], b[2], D[2]) / detA;
-                uOut = u;
-                vOut = v;
-                tOut = t;
-                if (0 <= u && u <= 1 && 0 <= v && v <= 1 && 0 <= u + v && u + v <= 1)
-                {
-                    return true;
-                }
-                else
-                {
-                    float outLength_buffer_a = (float)Math.Sqrt(Math.Pow(a[0], 2) + Math.Pow(a[1], 2) + Math.Pow(a[2], 2)) * u;
-                    float outLength_buffer_b = (float)Math.Sqrt(Math.Pow(b[0], 2) + Math.Pow(b[1], 2) + Math.Pow(b[2], 2)) * v;
-                    //多少の誤差があるので、微小であれば交差しているとみなす
-                    if (((AllowVerySmall(outLength_buffer_a) || AllowVerySmall(1 - outLength_buffer_a)) && (AllowVerySmall(outLength_buffer_b))))
-                    {
-                        return true;
-                    }
-                    return false;
-                }
-            }
-            else
-            {
-                return false;
-            }
-        }
-        //曲がりのない平面を扱うので三点しか与えない
-        private bool IsCrossed_Ray_Rectangle(float[] basePointOfRay, float[] rayVector, float[] fPosVector, float[] sPosVector, float[] tPosVector)
-        {
-            float[] D = new float[3];
-            float[] R = new float[3];
-            float[] a = new float[3];
-            float[] b = new float[3];
-
-            float detA = 0;
-
-            float u = 0;
-            float v = 0;
-            float t = 0;
-            //ここにきた時点で座標は計算済みの想定なので、
-            a = SubVector_Vector3(sPosVector, fPosVector);
-            b = SubVector_Vector3(tPosVector, fPosVector);
-            R = MultipleScalar_Vector3(rayVector, -1);
-            D = SubVector_Vector3(basePointOfRay, fPosVector);
-            detA = Det(a[0], b[0], R[0], a[1], b[1], R[1], a[2], b[2], R[2]);
-            if (detA != 0)
-            {
-                //ここでテクスチャ描画に必要なu,vの値が設定される
-                u = Det(D[0], b[0], R[0], D[1], b[1], R[1], D[2], b[2], R[2]) / detA;
-                v = Det(a[0], D[0], R[0], a[1], D[1], R[1], a[2], D[2], R[2]) / detA;
-                t = Det(a[0], b[0], D[0], a[1], b[1], D[1], a[2], b[2], D[2]) / detA;
-                if (0 <= u && u <= 1 && 0 <= v && v <= 1)
-                {
-                    return true;
-                }
-                else
-                {
-                    float outLength_buffer_a = (float)Math.Sqrt(Math.Pow(a[0], 2) + Math.Pow(a[1], 2) + Math.Pow(a[2], 2)) * u;
-                    float outLength_buffer_b = (float)Math.Sqrt(Math.Pow(b[0], 2) + Math.Pow(b[1], 2) + Math.Pow(b[2], 2)) * v;
-                    //多少の誤差があるので、微小であれば交差しているとみなす
-                    if (((AllowVerySmall(outLength_buffer_a) || AllowVerySmall(1 - outLength_buffer_a)) && (AllowVerySmall(outLength_buffer_b))))
-                    {
-                        return true;
-                    }
-                    return false;
-                }
-            }
-            else
-            {
-                return false;
-            }
-        }
 
         //計算もここで行う
         //行列の値
@@ -3575,15 +3172,6 @@ namespace ConsoleGame
         private float[] MultipleScalar_Vector3(float[] a, float b)
         {
             return [a[0] * b, a[1] * b, a[2] * b];
-        }
-        //十分小さければtrue
-        private bool AllowVerySmall(float num)
-        {
-            if (Math.Abs(num) <= smallNum)
-            {
-                return true;
-            }
-            return false;
         }
     }
 
